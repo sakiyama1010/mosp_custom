@@ -1,0 +1,65 @@
+version: '2'
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  pg-database:
+    driver: local
+
+services:
+  postgres:
+    build:
+      context: ./image/postgres
+      args: 
+        http_proxy: ${HTTP_PROXY}
+        https_proxy: ${HTTPS_PROXY}
+    image: mosp-postgres:latest
+    command: postgres -c 'max_connections=200'
+    environment: 
+      POSTGRES_PASSWORD: secret
+      PGDATA: /var/lib/postgresql/data/pgdata
+      HTTP_PROXY: ${HTTP_PROXY}
+      HTTPS_PROXY: ${HTTPS_PROXY}
+    ports:
+      - 35432:5432
+    volumes:
+      - pg-database:/var/lib/postgresql/data
+      - ./postgres/work:/var/work
+      - ./postgres/sql:/var/work/sql
+    networks:
+      - backend
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    ports:
+      - 9432:80
+      - 5434:443
+    environment:
+      PGADMIN_DEFAULT_EMAIL: mosp-docker@localhost
+      PGADMIN_DEFAULT_PASSWORD: password
+    volumes:
+      - ./pgadmin/data:/var/lib/pgadmin
+    networks:
+      - backend
+  
+  httpd:
+    image: httpd:2.4-alpine
+    ports:
+      - 9462:80
+      - 5462:443
+    volumes:
+      - ./httpd/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./httpd/extra:/usr/local/apache2/conf/extra
+    networks:
+      - backend
+
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - 2680:1080
+      - 2625:1025
+    networks:
+      - backend
+
